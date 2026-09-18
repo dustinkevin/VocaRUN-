@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Zap, Volume2, Sparkles, CheckCircle2, XCircl
 interface TrackViewProps {
   currentLane: LaneIndex;
   onLaneChange: (lane: LaneIndex) => void;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
   options: GateOption[];
   gateProgress: number; // 0 to 100
   isSlowed: boolean;
@@ -20,6 +22,8 @@ interface TrackViewProps {
 export const TrackView: React.FC<TrackViewProps> = ({
   currentLane,
   onLaneChange,
+  onMoveLeft,
+  onMoveRight,
   options,
   gateProgress,
   isSlowed,
@@ -37,23 +41,17 @@ export const TrackView: React.FC<TrackViewProps> = ({
   const pointerStartY = useRef<number | null>(null);
   const isSwiping = useRef<boolean>(false);
   const [swipeHint, setSwipeHint] = useState<string | null>(null);
-  const currentLaneRef = useRef(currentLane);
-
-  useEffect(() => {
-    currentLaneRef.current = currentLane;
-  }, [currentLane]);
 
   const triggerSwipeLane = useCallback(
     (direction: 'left' | 'right') => {
       if (isEvaluating) return;
-      const current = currentLaneRef.current;
-      if (direction === 'left' && current > 0) {
-        onLaneChange((current - 1) as LaneIndex);
-      } else if (direction === 'right' && current < 2) {
-        onLaneChange((current + 1) as LaneIndex);
+      if (direction === 'left') {
+        onMoveLeft();
+      } else {
+        onMoveRight();
       }
     },
-    [isEvaluating, onLaneChange]
+    [isEvaluating, onMoveLeft, onMoveRight]
   );
 
   // Pointer event listeners on container for reliable touch & drag swiping
@@ -114,9 +112,9 @@ export const TrackView: React.FC<TrackViewProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEvaluating) return;
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        if (currentLane > 0) onLaneChange((currentLane - 1) as LaneIndex);
+        onMoveLeft();
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        if (currentLane < 2) onLaneChange((currentLane + 1) as LaneIndex);
+        onMoveRight();
       } else if (e.key === '1') {
         onLaneChange(0);
       } else if (e.key === '2') {
@@ -129,7 +127,7 @@ export const TrackView: React.FC<TrackViewProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentLane, onLaneChange, onRush, isEvaluating]);
+  }, [onMoveLeft, onMoveRight, onLaneChange, onRush, isEvaluating]);
 
   // STRAIGHT VERTICAL DESCENT CALCULATION:
   // Starts directly at CENTER TOP (중앙 상단) and rushes straight down to RUNNER (중앙 하단)
@@ -432,8 +430,11 @@ export const TrackView: React.FC<TrackViewProps> = ({
                 key={opt.lane}
                 type="button"
                 disabled={isEvaluating}
-                onPointerDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onLaneChange(opt.lane);
+                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -465,12 +466,15 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={currentLane === 0 || isEvaluating}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveLeft();
+            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (currentLane > 0) onLaneChange((currentLane - 1) as LaneIndex);
+              onMoveLeft();
             }}
             className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer touch-manipulation select-none ${
               currentLane === 0
@@ -486,8 +490,11 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={isEvaluating}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRush();
+            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -503,12 +510,15 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={currentLane === 2 || isEvaluating}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveRight();
+            }}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (currentLane < 2) onLaneChange((currentLane + 1) as LaneIndex);
+              onMoveRight();
             }}
             className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer touch-manipulation select-none ${
               currentLane === 2

@@ -257,15 +257,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return () => cancelAnimationFrame(animFrame);
   }, [handleEvaluateAnswer]);
 
-  // Cooldown ref to prevent mobile ghost clicks, double-tap zoom triggers, or simultaneous swipe+tap events
+  // Cooldown ref to prevent microsecond duplicate synthetic events (0-30ms)
   const lastLaneChangeTimeRef = useRef<number>(0);
 
-  // Handle lane change with debounce cooldown against mobile double-firing
+  // Handle direct lane change (0, 1, 2)
   const handleLaneChange = useCallback((lane: LaneIndex) => {
     if (isEvaluatingRef.current) return;
     const now = performance.now();
-    // 160ms debounce: completely prevents double lane movement from a single mobile press/event duplicate
-    if (now - lastLaneChangeTimeRef.current < 160) {
+    // 35ms microsecond guard: blocks duplicate synthetic events from same touch without slowing down user taps
+    if (now - lastLaneChangeTimeRef.current < 35) {
       return;
     }
     if (lane === currentLaneRef.current) return;
@@ -274,6 +274,34 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     playSound.laneSwitch();
     setCurrentLane(lane);
     currentLaneRef.current = lane;
+  }, []);
+
+  // Instant step left: uses synchronized ref so rapid consecutive taps execute immediately with zero lag
+  const handleMoveLeft = useCallback(() => {
+    if (isEvaluatingRef.current) return;
+    const now = performance.now();
+    if (now - lastLaneChangeTimeRef.current < 35) return;
+    if (currentLaneRef.current > 0) {
+      const nextLane = (currentLaneRef.current - 1) as LaneIndex;
+      lastLaneChangeTimeRef.current = now;
+      playSound.laneSwitch();
+      setCurrentLane(nextLane);
+      currentLaneRef.current = nextLane;
+    }
+  }, []);
+
+  // Instant step right: uses synchronized ref so rapid consecutive taps execute immediately with zero lag
+  const handleMoveRight = useCallback(() => {
+    if (isEvaluatingRef.current) return;
+    const now = performance.now();
+    if (now - lastLaneChangeTimeRef.current < 35) return;
+    if (currentLaneRef.current < 2) {
+      const nextLane = (currentLaneRef.current + 1) as LaneIndex;
+      lastLaneChangeTimeRef.current = now;
+      playSound.laneSwitch();
+      setCurrentLane(nextLane);
+      currentLaneRef.current = nextLane;
+    }
   }, []);
 
   // Instant rush
@@ -381,6 +409,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <TrackView
           currentLane={currentLane}
           onLaneChange={handleLaneChange}
+          onMoveLeft={handleMoveLeft}
+          onMoveRight={handleMoveRight}
           options={options}
           gateProgress={gateProgress}
           isSlowed={isSlowed}
