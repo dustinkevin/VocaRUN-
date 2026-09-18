@@ -37,17 +37,23 @@ export const TrackView: React.FC<TrackViewProps> = ({
   const pointerStartY = useRef<number | null>(null);
   const isSwiping = useRef<boolean>(false);
   const [swipeHint, setSwipeHint] = useState<string | null>(null);
+  const currentLaneRef = useRef(currentLane);
+
+  useEffect(() => {
+    currentLaneRef.current = currentLane;
+  }, [currentLane]);
 
   const triggerSwipeLane = useCallback(
     (direction: 'left' | 'right') => {
       if (isEvaluating) return;
-      if (direction === 'left' && currentLane > 0) {
-        onLaneChange((currentLane - 1) as LaneIndex);
-      } else if (direction === 'right' && currentLane < 2) {
-        onLaneChange((currentLane + 1) as LaneIndex);
+      const current = currentLaneRef.current;
+      if (direction === 'left' && current > 0) {
+        onLaneChange((current - 1) as LaneIndex);
+      } else if (direction === 'right' && current < 2) {
+        onLaneChange((current + 1) as LaneIndex);
       }
     },
-    [currentLane, isEvaluating, onLaneChange]
+    [isEvaluating, onLaneChange]
   );
 
   // Pointer event listeners on container for reliable touch & drag swiping
@@ -56,7 +62,8 @@ export const TrackView: React.FC<TrackViewProps> = ({
     if (!el) return;
 
     const onPointerDown = (e: PointerEvent) => {
-      if ((e.target as HTMLElement)?.closest('button')) return;
+      // Ignore if touched inside a button or the bottom action HUD
+      if ((e.target as Element)?.closest('button, [data-no-swipe]')) return;
       pointerStartX.current = e.clientX;
       pointerStartY.current = e.clientY;
       isSwiping.current = true;
@@ -67,8 +74,8 @@ export const TrackView: React.FC<TrackViewProps> = ({
       const deltaX = e.clientX - pointerStartX.current;
       const deltaY = e.clientY - pointerStartY.current;
 
-      // When horizontal drag exceeds threshold
-      if (Math.abs(deltaX) > 22 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05) {
+      // Stable swipe threshold: 38px horizontal drag, distinctly horizontal over vertical
+      if (Math.abs(deltaX) > 38 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
         if (deltaX < 0) {
           triggerSwipeLane('left');
           setSwipeHint('◀ 왼쪽 통로 이동!');
@@ -378,30 +385,44 @@ export const TrackView: React.FC<TrackViewProps> = ({
         />
       </div>
 
-      {/* 5. INTERACTIVE 3-LANE TAP ZONES ACROSS ENTIRE TRACK */}
-      <div className="absolute inset-0 grid grid-cols-3 z-15 pointer-events-auto">
+      {/* 5. INTERACTIVE 3-LANE TAP ZONES (상단 및 중단 트랙 영역만 커버, 하단 조작 HUD와 겹치지 않음) */}
+      <div className="absolute inset-x-0 top-14 bottom-36 grid grid-cols-3 z-15 pointer-events-auto">
         <button
           type="button"
           aria-label="1번 왼쪽 통로 선택"
-          onClick={() => onLaneChange(0)}
-          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLaneChange(0);
+          }}
+          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer touch-manipulation"
         />
         <button
           type="button"
           aria-label="2번 중앙 통로 선택"
-          onClick={() => onLaneChange(1)}
-          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLaneChange(1);
+          }}
+          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer touch-manipulation"
         />
         <button
           type="button"
           aria-label="3번 오른쪽 통로 선택"
-          onClick={() => onLaneChange(2)}
-          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLaneChange(2);
+          }}
+          className="w-full h-full focus:outline-none hover:bg-cyan-500/5 active:bg-cyan-500/15 cursor-pointer touch-manipulation"
         />
       </div>
 
       {/* 6. BOTTOM ACTION HUD: ALWAYS-LEGIBLE QUICK SELECT CARDS & CONTROLS */}
-      <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-1.5 z-30 px-1 pointer-events-auto">
+      <div
+        data-no-swipe="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        className="absolute bottom-2 left-2 right-2 flex flex-col gap-1.5 z-30 px-1 pointer-events-auto"
+      >
         {/* 3 Quick Lane Answer Badges */}
         <div className="grid grid-cols-3 gap-1.5 w-full">
           {options.map((opt) => {
@@ -411,20 +432,26 @@ export const TrackView: React.FC<TrackViewProps> = ({
                 key={opt.lane}
                 type="button"
                 disabled={isEvaluating}
-                onClick={() => onLaneChange(opt.lane)}
-                className={`py-1 px-2 rounded-xl text-left flex flex-col justify-center border transition-all active:scale-95 cursor-pointer backdrop-blur-md shadow-md ${
+                onPointerDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onLaneChange(opt.lane);
+                }}
+                className={`py-1 px-2 rounded-xl text-left flex flex-col justify-center border transition-all active:scale-95 cursor-pointer backdrop-blur-md shadow-md touch-manipulation select-none ${
                   isSelected
                     ? 'bg-cyan-500/25 border-cyan-400 text-white ring-2 ring-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
                     : 'bg-slate-900/90 border-slate-700/80 text-slate-300 hover:bg-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between text-[10px] font-black">
+                <div className="flex items-center justify-between text-[10px] font-black pointer-events-none">
                   <span className={isSelected ? 'text-cyan-300' : 'text-slate-400'}>
                     {opt.lane + 1}번 {opt.lane === 0 ? '(왼)' : opt.lane === 1 ? '(중)' : '(오)'}
                   </span>
                   {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />}
                 </div>
-                <div className="text-xs sm:text-sm font-extrabold truncate text-white">
+                <div className="text-xs sm:text-sm font-extrabold truncate text-white pointer-events-none">
                   {opt.text}
                 </div>
               </button>
@@ -438,45 +465,59 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={currentLane === 0 || isEvaluating}
-            onClick={() => {
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (currentLane > 0) onLaneChange((currentLane - 1) as LaneIndex);
             }}
-            className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer ${
+            className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer touch-manipulation select-none ${
               currentLane === 0
                 ? 'bg-slate-800/40 text-slate-500 border border-slate-700/40 cursor-not-allowed'
                 : 'bg-slate-800/95 text-white border-2 border-cyan-500/60 hover:bg-slate-700 active:bg-cyan-600'
             }`}
           >
-            <ChevronLeft className="w-4 h-4 text-cyan-400" />
-            <span>◀ 왼쪽</span>
+            <ChevronLeft className="w-4 h-4 text-cyan-400 pointer-events-none" />
+            <span className="pointer-events-none">◀ 왼쪽</span>
           </button>
 
           {/* Instant Rush Button */}
           <button
             type="button"
             disabled={isEvaluating}
-            onClick={onRush}
-            className="flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs sm:text-sm font-black bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/30 active:scale-95 hover:brightness-110 cursor-pointer"
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRush();
+            }}
+            className="flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs sm:text-sm font-black bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-lg shadow-amber-500/30 active:scale-95 hover:brightness-110 cursor-pointer touch-manipulation select-none"
           >
-            <Zap className="w-4 h-4 fill-slate-950 text-slate-950" />
-            <span>즉시 통과!</span>
+            <Zap className="w-4 h-4 fill-slate-950 text-slate-950 pointer-events-none" />
+            <span className="pointer-events-none">즉시 통과!</span>
           </button>
 
           {/* Right button */}
           <button
             type="button"
             disabled={currentLane === 2 || isEvaluating}
-            onClick={() => {
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (currentLane < 2) onLaneChange((currentLane + 1) as LaneIndex);
             }}
-            className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer ${
+            className={`flex-1 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-1 text-xs sm:text-sm font-black shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer touch-manipulation select-none ${
               currentLane === 2
                 ? 'bg-slate-800/40 text-slate-500 border border-slate-700/40 cursor-not-allowed'
                 : 'bg-slate-800/95 text-white border-2 border-cyan-500/60 hover:bg-slate-700 active:bg-cyan-600'
             }`}
           >
-            <span>오른쪽 ▶</span>
-            <ChevronRight className="w-4 h-4 text-cyan-400" />
+            <span className="pointer-events-none">오른쪽 ▶</span>
+            <ChevronRight className="w-4 h-4 text-cyan-400 pointer-events-none" />
           </button>
         </div>
       </div>

@@ -257,12 +257,24 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return () => cancelAnimationFrame(animFrame);
   }, [handleEvaluateAnswer]);
 
-  // Handle lane change
-  const handleLaneChange = (lane: LaneIndex) => {
-    if (lane === currentLane || isEvaluating) return;
+  // Cooldown ref to prevent mobile ghost clicks, double-tap zoom triggers, or simultaneous swipe+tap events
+  const lastLaneChangeTimeRef = useRef<number>(0);
+
+  // Handle lane change with debounce cooldown against mobile double-firing
+  const handleLaneChange = useCallback((lane: LaneIndex) => {
+    if (isEvaluatingRef.current) return;
+    const now = performance.now();
+    // 160ms debounce: completely prevents double lane movement from a single mobile press/event duplicate
+    if (now - lastLaneChangeTimeRef.current < 160) {
+      return;
+    }
+    if (lane === currentLaneRef.current) return;
+
+    lastLaneChangeTimeRef.current = now;
     playSound.laneSwitch();
     setCurrentLane(lane);
-  };
+    currentLaneRef.current = lane;
+  }, []);
 
   // Instant rush
   const handleRush = () => {
