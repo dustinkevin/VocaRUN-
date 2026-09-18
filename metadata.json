@@ -1,0 +1,6 @@
+{
+  "name": "VocaRUN!",
+  "description": "초등학교 6학년 학생들을 위한 중등 필수 영단어 러닝 게임",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
