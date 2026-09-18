@@ -257,15 +257,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     return () => cancelAnimationFrame(animFrame);
   }, [handleEvaluateAnswer]);
 
-  // Cooldown ref to prevent microsecond duplicate synthetic events (0-30ms)
+  // Cooldown ref to prevent mobile double-firing and ghost clicks
   const lastLaneChangeTimeRef = useRef<number>(0);
 
   // Handle direct lane change (0, 1, 2)
   const handleLaneChange = useCallback((lane: LaneIndex) => {
     if (isEvaluatingRef.current) return;
     const now = performance.now();
-    // 35ms microsecond guard: blocks duplicate synthetic events from same touch without slowing down user taps
-    if (now - lastLaneChangeTimeRef.current < 35) {
+    if (now - lastLaneChangeTimeRef.current < 100) {
       return;
     }
     if (lane === currentLaneRef.current) return;
@@ -276,11 +275,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     currentLaneRef.current = lane;
   }, []);
 
-  // Instant step left: uses synchronized ref so rapid consecutive taps execute immediately with zero lag
+  // Step left: 100ms cooldown prevents double movement from a single press
   const handleMoveLeft = useCallback(() => {
     if (isEvaluatingRef.current) return;
     const now = performance.now();
-    if (now - lastLaneChangeTimeRef.current < 35) return;
+    if (now - lastLaneChangeTimeRef.current < 100) return;
     if (currentLaneRef.current > 0) {
       const nextLane = (currentLaneRef.current - 1) as LaneIndex;
       lastLaneChangeTimeRef.current = now;
@@ -290,11 +289,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     }
   }, []);
 
-  // Instant step right: uses synchronized ref so rapid consecutive taps execute immediately with zero lag
+  // Step right: 100ms cooldown prevents double movement from a single press
   const handleMoveRight = useCallback(() => {
     if (isEvaluatingRef.current) return;
     const now = performance.now();
-    if (now - lastLaneChangeTimeRef.current < 35) return;
+    if (now - lastLaneChangeTimeRef.current < 100) return;
     if (currentLaneRef.current < 2) {
       const nextLane = (currentLaneRef.current + 1) as LaneIndex;
       lastLaneChangeTimeRef.current = now;

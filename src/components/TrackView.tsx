@@ -430,11 +430,7 @@ export const TrackView: React.FC<TrackViewProps> = ({
                 key={opt.lane}
                 type="button"
                 disabled={isEvaluating}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onLaneChange(opt.lane);
-                }}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -466,11 +462,7 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={currentLane === 0 || isEvaluating}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onMoveLeft();
-            }}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -490,11 +482,7 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={isEvaluating}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRush();
-            }}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -510,11 +498,7 @@ export const TrackView: React.FC<TrackViewProps> = ({
           <button
             type="button"
             disabled={currentLane === 2 || isEvaluating}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onMoveRight();
-            }}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
