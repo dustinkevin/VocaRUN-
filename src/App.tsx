@@ -4,6 +4,12 @@ import { getRandomWords } from './data/words';
 import { StartScreen } from './components/StartScreen';
 import { GameScreen } from './components/GameScreen';
 import { ResultScreen } from './components/ResultScreen';
+import { GoogleSheetSyncModal } from './components/GoogleSheetSyncModal';
+import {
+  getStoredStudentName,
+  getStoredPlayCount,
+  incrementAndGetPlayCount,
+} from './utils/googleSheets';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreenType>('start');
@@ -12,6 +18,9 @@ export default function App() {
   const [score, setScore] = useState<number>(0);
   const [wrongWords, setWrongWords] = useState<WordItem[]>([]);
   const [history, setHistory] = useState<QuestionHistory[]>([]);
+  const [studentName, setStudentName] = useState<string>(() => getStoredStudentName());
+  const [playCount, setPlayCount] = useState<number>(() => getStoredPlayCount());
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState<boolean>(false);
 
   const handleStartGame = (selectedDiff?: DifficultyLevel) => {
     const activeDifficulty = selectedDiff || difficulty;
@@ -32,6 +41,8 @@ export default function App() {
     wrongs: WordItem[],
     questionHistory: QuestionHistory[]
   ) => {
+    const updatedCount = incrementAndGetPlayCount();
+    setPlayCount(updatedCount);
     setScore(finalScore);
     setWrongWords(wrongs);
     setHistory(questionHistory);
@@ -73,6 +84,9 @@ export default function App() {
           onStart={handleStartGame}
           selectedDifficulty={difficulty}
           onSelectDifficulty={(diff) => setDifficulty(diff)}
+          studentName={studentName}
+          playCount={playCount}
+          onOpenSheetModal={() => setIsSheetModalOpen(true)}
         />
       )}
 
@@ -92,11 +106,21 @@ export default function App() {
           wrongWords={wrongWords}
           history={history}
           difficulty={difficulty}
+          studentName={studentName}
+          playCount={playCount}
+          onOpenSheetModal={() => setIsSheetModalOpen(true)}
           onRetry={handleRetry}
           onGoHome={handleGoHome}
           onNextSet={handleNextSet}
         />
       )}
+
+      {/* Google Sheet Sync Modal */}
+      <GoogleSheetSyncModal
+        isOpen={isSheetModalOpen}
+        onClose={() => setIsSheetModalOpen(false)}
+        onSave={(name) => setStudentName(name)}
+      />
     </main>
   );
 }

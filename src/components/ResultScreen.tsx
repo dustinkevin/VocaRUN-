@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { WordItem, QuestionHistory, DifficultyLevel } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { WordItem, QuestionHistory, DifficultyLevel, SheetSyncStatus } from '../types';
 import { DIFFICULTY_CONFIGS } from '../data/words';
 import { speakWord, playSound } from '../utils/audio';
+import {
+  getStoredSheetUrl,
+  sendGameRecordToGoogleSheet,
+  formatKoreanTimestamp,
+  GameRecordData,
+} from '../utils/googleSheets';
 import confetti from 'canvas-confetti';
 import {
   Trophy,
@@ -15,6 +21,12 @@ import {
   Award,
   Sparkles,
   Shuffle,
+  FileSpreadsheet,
+  RefreshCw,
+  Send,
+  AlertCircle,
+  CheckCircle2,
+  Settings,
 } from 'lucide-react';
 
 interface ResultScreenProps {
@@ -23,6 +35,9 @@ interface ResultScreenProps {
   wrongWords: WordItem[];
   history: QuestionHistory[];
   difficulty: DifficultyLevel;
+  studentName: string;
+  playCount: number;
+  onOpenSheetModal: () => void;
   onRetry: () => void;
   onGoHome: () => void;
   onNextSet: () => void;
@@ -34,6 +49,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   wrongWords,
   history,
   difficulty,
+  studentName,
+  playCount,
+  onOpenSheetModal,
   onRetry,
   onGoHome,
   onNextSet,
@@ -43,6 +61,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
     wrongWords.length > 0 ? 'wrong' : 'all'
   );
   const [playingWordId, setPlayingWordId] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SheetSyncStatus>('idle');
+  const [syncMessage, setSyncMessage] = useState<string>('');
+  const [recordedTime] = useState<string>(() => formatKoreanTimestamp());
 
   const correctCount = history.filter((h) => h.isCorrect).length;
   const isAllCleared = history.length === totalWordsCount;
@@ -66,18 +87,68 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
     }
   }, [isPerfect, accuracyPercent]);
 
+  // Google Sheet record sync function
+  const handleSyncToSheet = useCallback(async () => {
+    const url = getStoredSheetUrl();
+    if (!url) {
+      setSyncStatus('idle');
+      return;
+    }
+
+    setSyncStatus('syncing');
+    setSyncMessage('구글 시트로 학습 기록을 전송하고 있습니다...');
+
+    const record: GameRecordData = {
+      timestamp: recordedTime,
+      name: studentName,
+      play_count: playCount,
+      correct_count: correctCount,
+      wrong_count: wrongWords.length,
+    };
+
+    const res = await sendGameRecordToGoogleSheet(url, record);
+    if (res.success) {
+      setSyncStatus('success');
+      setSyncMessage(res.message);
+    } else {
+      setSyncStatus('error');
+      setSyncMessage(res.message);
+    }
+  }, [recordedTime, studentName, playCount, correctCount, wrongWords.length]);
+
+  // Automatically trigger sync when results screen opens if URL is present
+  useEffect(() => {
+    const url = getStoredSheetUrl();
+    if (url) {
+      handleSyncToSheet();
+    }
+  }, [handleSyncToSheet]);
+
   // Handle speaker pronunciation playback
   const handlePlayWord = (wordItem: WordItem) => {
     setPlayingWordId(wordItem.id);
     speakWord(wordItem.word, () => setPlayingWordId(null));
   };
 
+  const hasSheetUrl = !!getStoredSheetUrl();
+
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col justify-between min-h-[92vh] py-5 px-4 space-y-5">
+    <div className="w-full max-w-lg mx-auto flex flex-col justify-between min-h-[92vh] py-4 px-4 space-y-4">
       {/* 1. SCORE SUMMARY HERO */}
       <div className="bg-gradient-to-b from-slate-900/95 to-indigo-950/90 border border-cyan-500/30 rounded-3xl p-5 shadow-2xl text-center relative overflow-hidden">
         {/* Glow accent */}
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top Student & Play Count Sub-header */}
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center gap-1">
+            <span>🧑‍🎓</span>
+            <span className="text-white font-bold">{studentName}</span>
+          </span>
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 font-mono">
+            제 {playCount}회차 플레이
+          </span>
+        </div>
 
         {/* Clear / Game Over Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-2 shadow">
@@ -130,13 +201,13 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-800 text-center">
           <div className="bg-slate-800/60 p-2 rounded-xl">
-            <span className="text-[10px] text-slate-400 block">정답 단어</span>
+            <span className="text-[10px] text-slate-400 block">정답 단어 (correct)</span>
             <span className="text-lg font-bold text-emerald-400">
               {correctCount}개
             </span>
           </div>
           <div className="bg-slate-800/60 p-2 rounded-xl">
-            <span className="text-[10px] text-slate-400 block">틀린 단어</span>
+            <span className="text-[10px] text-slate-400 block">틀린 단어 (wrong)</span>
             <span className="text-lg font-bold text-rose-400">
               {wrongWords.length}개
             </span>
@@ -150,8 +221,129 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </div>
       </div>
 
+      {/* 1.5 GOOGLE SHEET RECORDING SYNC CARD */}
+      <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-4 shadow-xl">
+        <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+              <FileSpreadsheet className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>구글 시트 학습 기록</span>
+                {syncStatus === 'success' && (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                    저장 완료
+                  </span>
+                )}
+                {syncStatus === 'syncing' && (
+                  <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                    전송 중
+                  </span>
+                )}
+                {syncStatus === 'error' && (
+                  <span className="text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full font-bold">
+                    전송 실패
+                  </span>
+                )}
+              </h3>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenSheetModal}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-colors cursor-pointer"
+          >
+            <Settings className="w-3 h-3 text-cyan-400" />
+            <span>{hasSheetUrl ? '시트 설정' : '연동 설정'}</span>
+          </button>
+        </div>
+
+        {/* Current row values mapping preview */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-[11px] mb-3">
+          <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800/80">
+            <span className="text-[9px] text-slate-400 block font-mono">timestamp</span>
+            <span className="text-[10px] font-medium text-slate-300 truncate block mt-0.5" title={recordedTime}>
+              {recordedTime.split(' ')[1] || recordedTime}
+            </span>
+          </div>
+          <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800/80">
+            <span className="text-[9px] text-slate-400 block font-mono">name</span>
+            <span className="font-bold text-amber-300 truncate block mt-0.5" title={studentName}>
+              {studentName}
+            </span>
+          </div>
+          <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800/80">
+            <span className="text-[9px] text-slate-400 block font-mono">play_count</span>
+            <span className="font-bold text-sky-400 mt-0.5 block">{playCount}회</span>
+          </div>
+          <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800/80">
+            <span className="text-[9px] text-slate-400 block font-mono">correct_count</span>
+            <span className="font-bold text-emerald-400 mt-0.5 block">{correctCount}</span>
+          </div>
+          <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800/80 col-span-2 sm:col-span-1">
+            <span className="text-[9px] text-slate-400 block font-mono">wrong_count</span>
+            <span className="font-bold text-rose-400 mt-0.5 block">{wrongWords.length}</span>
+          </div>
+        </div>
+
+        {/* Status Action Notice */}
+        {hasSheetUrl ? (
+          <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+            <div className="flex items-center gap-1.5 text-slate-300 truncate">
+              {syncStatus === 'syncing' ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin shrink-0" />
+                  <span className="text-cyan-300 text-xs">구글 시트로 저장 중...</span>
+                </>
+              ) : syncStatus === 'success' ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-300 text-xs truncate">구글 시트에 성공적으로 저장되었습니다!</span>
+                </>
+              ) : syncStatus === 'error' ? (
+                <>
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span className="text-rose-300 text-xs truncate">{syncMessage || '전송 실패'}</span>
+                </>
+              ) : (
+                <span className="text-slate-400 text-xs">구글 시트 자동 저장이 활성화되어 있습니다.</span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSyncToSheet}
+              disabled={syncStatus === 'syncing'}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {syncStatus === 'syncing' ? (
+                <RefreshCw className="w-3 h-3 animate-spin" />
+              ) : (
+                <Send className="w-3 h-3" />
+              )}
+              <span>{syncStatus === 'success' ? '다시 전송' : '전송하기'}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-xs text-amber-300/90">
+              구글 시트 연동 URL을 등록하면 게임 결과가 시트에 자동 저장됩니다.
+            </span>
+            <button
+              type="button"
+              onClick={onOpenSheetModal}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-slate-950 text-xs font-bold shrink-0 shadow cursor-pointer transition-all"
+            >
+              구글 시트 연동하기
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* 2. REVIEW WORDS SECTION (틀린 단어 다시보기 및 스피커 다시 듣기) */}
-      <div className="flex-1 bg-slate-900/90 border border-slate-800 rounded-3xl p-4 shadow-xl flex flex-col min-h-[300px]">
+      <div className="flex-1 bg-slate-900/90 border border-slate-800 rounded-3xl p-4 shadow-xl flex flex-col min-h-[280px]">
         {/* Tab Headers */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
           <div className="flex items-center gap-2">

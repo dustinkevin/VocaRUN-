@@ -2,36 +2,78 @@ import React from 'react';
 import { RunnerCharacter } from './RunnerCharacter';
 import { DifficultyLevel } from '../types';
 import { DIFFICULTY_CONFIGS } from '../data/words';
-import { Play, Sparkles, Volume2, ShieldCheck, Trophy, Shuffle, Flame } from 'lucide-react';
+import { getStoredSheetUrl } from '../utils/googleSheets';
+import { Play, Sparkles, Volume2, ShieldCheck, Trophy, Shuffle, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 
 interface StartScreenProps {
   onStart: (difficulty?: DifficultyLevel) => void;
   selectedDifficulty: DifficultyLevel;
   onSelectDifficulty: (diff: DifficultyLevel) => void;
+  studentName: string;
+  playCount: number;
+  onOpenSheetModal: () => void;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({
   onStart,
   selectedDifficulty,
   onSelectDifficulty,
+  studentName,
+  playCount,
+  onOpenSheetModal,
 }) => {
   const currentConfig = DIFFICULTY_CONFIGS[selectedDifficulty];
+  const hasSheetUrl = !!getStoredSheetUrl();
 
   return (
-    <div className="w-full max-w-md mx-auto flex flex-col items-center justify-between min-h-[90vh] py-5 px-4">
+    <div className="w-full max-w-md mx-auto flex flex-col items-center justify-between min-h-[90vh] py-4 px-4 space-y-3">
+      {/* Top Student & Google Sheet Status Bar */}
+      <div className="w-full flex items-center justify-between gap-2 text-xs">
+        <button
+          type="button"
+          onClick={onOpenSheetModal}
+          className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 transition-colors cursor-pointer text-left group"
+        >
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="text-sm">🧑‍🎓</span>
+            <span className="font-bold text-slate-200 group-hover:text-cyan-300 transition-colors truncate">
+              {studentName || '6학년 학생'}
+            </span>
+            <span className="text-[10px] text-amber-300 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full font-mono shrink-0">
+              {playCount}회차
+            </span>
+          </div>
+          <span className="text-[10px] text-cyan-400 shrink-0 font-medium">이름 수정</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenSheetModal}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer shrink-0 ${
+            hasSheetUrl
+              ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/50 shadow-sm'
+              : 'bg-slate-900/90 border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40'
+          }`}
+          title="구글 시트 연동 설정"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{hasSheetUrl ? '시트 연동됨' : '구글 시트 연동'}</span>
+        </button>
+      </div>
+
       {/* Top Tag & Title Logo */}
-      <div className="flex flex-col items-center text-center space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold tracking-wide shadow-sm">
+      <div className="flex flex-col items-center text-center space-y-1.5">
+        <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold tracking-wide shadow-sm">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>쉽고 빠르게 외우는 영단어</span>
+          <span>초등 6학년 맞춤 영단어 스피드 암기</span>
         </div>
 
         {/* Dynamic Title Logo */}
-        <div className="relative pt-1">
+        <div className="relative pt-0.5">
           <h1 className="text-5xl sm:text-6xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 drop-shadow-[0_4px_16px_rgba(56,189,248,0.4)] font-['Fredoka',sans-serif]">
             Voca<span className="text-amber-400">RUN!</span>
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-1 text-slate-400 text-xs font-medium">
+          <div className="flex items-center justify-center gap-2 mt-0.5 text-slate-400 text-xs font-medium">
             <span>달리며 암기하는 스피드 어휘 러너</span>
           </div>
         </div>

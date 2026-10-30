@@ -40,3 +40,15 @@ export interface GameSettings {
   soundEnabled: boolean;
   speechRate: number; // 0.8 ~ 1.0
 }
+
+export interface GameRecord {
+  timestamp: string;
+  name: string;
+  play_count: number;
+  correct_count: number;
+  wrong_count: number;
+  difficulty?: DifficultyLevel;
+  score?: number;
+}
+
+export type SheetSyncStatus = 'idle' | 'syncing' | 'success' | 'error';
