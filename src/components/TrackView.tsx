@@ -301,6 +301,13 @@ export const TrackView: React.FC<TrackViewProps> = ({
               {currentWord.word}
             </div>
 
+            {/* Example English sentence */}
+            {currentWord.exampleEn && (
+              <div className="text-[11px] sm:text-xs font-semibold text-cyan-200 mt-1 px-2.5 py-0.5 bg-slate-950/75 rounded-full border border-cyan-500/30 max-w-[95%] truncate">
+                📝 {currentWord.exampleEn}
+              </div>
+            )}
+
             {/* Subtitle instruction */}
             <div className="text-[10px] font-bold text-slate-300 mt-0.5">
               맞는 뜻의 통로로 캐릭터를 이동하세요!

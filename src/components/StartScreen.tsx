@@ -51,13 +51,13 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           onClick={onOpenSheetModal}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer shrink-0 ${
             hasSheetUrl
-              ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/50 shadow-sm'
-              : 'bg-slate-900/90 border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40'
+              ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60 shadow-sm'
+              : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40'
           }`}
-          title="구글 시트 연동 설정"
+          title="구글 시트 연동 (선생님 1회 설정)"
         >
-          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{hasSheetUrl ? '시트 연동됨' : '구글 시트 연동'}</span>
+          <FileSpreadsheet className={`w-3.5 h-3.5 ${hasSheetUrl ? 'text-emerald-400' : 'text-slate-400'}`} />
+          <span>{hasSheetUrl ? '🟢 시트 기록 활성' : '⚙️ 선생님 시트 연동'}</span>
         </button>
       </div>
 

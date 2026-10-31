@@ -34,6 +34,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const currentWord = words[currentIndex] || words[0];
 
+  const [currentSentenceTaps, setCurrentSentenceTaps] = useState<number>(0);
+  const currentSentenceTapsRef = useRef<number>(0);
+
   // Stable refs for game loop to avoid unnecessary recreation or multi-triggers
   const isEvaluatingRef = useRef(false);
   const isPausedRef = useRef(false);
@@ -108,13 +111,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     const currentOptions = optionsRef.current.length > 0 ? optionsRef.current : options;
     const chosenOption = currentOptions.find((opt) => opt.lane === activeLane);
     const isCorrect = chosenOption ? chosenOption.isCorrect : false;
+    const taps = currentSentenceTapsRef.current;
+    const sentenceText = currentWord.exampleEn || currentWord.word;
 
-    // Record question history
+    // Record question history with sentence & tap frequency
     const historyItem: QuestionHistory = {
       word: currentWord,
       chosenMeaning: chosenOption ? chosenOption.text : '',
       isCorrect,
       lane: activeLane,
+      tapCount: taps,
+      sentence: sentenceText,
     };
     const updatedHistory = [...history, historyItem];
     setHistory(updatedHistory);
@@ -199,6 +206,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     isEvaluatingRef.current = false;
     setIsEvaluating(false);
     setStatusEffect('none');
+    currentSentenceTapsRef.current = 0;
+    setCurrentSentenceTaps(0);
 
     // Auto-speak English word on entrance
     setIsSpeaking(true);
@@ -208,6 +217,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   // Pronounce word button
   const handlePronounce = () => {
     if (isSpeaking || !currentWord) return;
+    currentSentenceTapsRef.current += 1;
+    setCurrentSentenceTaps((t) => t + 1);
     setIsSpeaking(true);
     speakWord(currentWord.word, () => setIsSpeaking(false));
   };
@@ -267,6 +278,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     if (now - lastLaneChangeTimeRef.current < 100) {
       return;
     }
+    currentSentenceTapsRef.current += 1;
+    setCurrentSentenceTaps((t) => t + 1);
     if (lane === currentLaneRef.current) return;
 
     lastLaneChangeTimeRef.current = now;
@@ -280,6 +293,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     if (isEvaluatingRef.current) return;
     const now = performance.now();
     if (now - lastLaneChangeTimeRef.current < 100) return;
+    currentSentenceTapsRef.current += 1;
+    setCurrentSentenceTaps((t) => t + 1);
     if (currentLaneRef.current > 0) {
       const nextLane = (currentLaneRef.current - 1) as LaneIndex;
       lastLaneChangeTimeRef.current = now;
@@ -294,6 +309,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     if (isEvaluatingRef.current) return;
     const now = performance.now();
     if (now - lastLaneChangeTimeRef.current < 100) return;
+    currentSentenceTapsRef.current += 1;
+    setCurrentSentenceTaps((t) => t + 1);
     if (currentLaneRef.current < 2) {
       const nextLane = (currentLaneRef.current + 1) as LaneIndex;
       lastLaneChangeTimeRef.current = now;
@@ -306,6 +323,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   // Instant rush
   const handleRush = () => {
     if (isEvaluatingRef.current) return;
+    currentSentenceTapsRef.current += 1;
+    setCurrentSentenceTaps((t) => t + 1);
     gateProgressRef.current = 100;
     setGateProgress(100);
     handleEvaluateAnswer();
@@ -321,7 +340,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     <div className="w-full max-w-lg mx-auto flex flex-col justify-between min-h-[92vh] py-3 px-3 sm:px-4">
       {/* 1. TOP HEADER: 남은 단어 수 (6/30) & 점수 (+100) & Status */}
       <div className="flex items-center justify-between gap-2 bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl shadow-md">
-        {/* Left: Progress / 남은 단어 수 (6/30 형식) */}
+        {/* Left: Progress / 남은 단어 수 (6/30 형식) & 탭 수 */}
         <div className="flex items-center gap-2">
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
@@ -332,9 +351,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 {difficulty === 'easy' ? '🟢 쉬움' : difficulty === 'medium' ? '🟡 중간' : '🔴 어려움'}
               </span>
             </div>
-            <span className="text-base sm:text-lg font-black text-cyan-400 font-mono">
-              {currentIndex + 1} / {words.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-base sm:text-lg font-black text-cyan-400 font-mono">
+                {currentIndex + 1} / {words.length}
+              </span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-300">
+                탭 {currentSentenceTaps}회
+              </span>
+            </div>
           </div>
         </div>
 

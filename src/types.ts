@@ -27,11 +27,22 @@ export interface GateOption {
   isCorrect: boolean;
 }
 
+export interface SentenceTapStat {
+  index: number;
+  word: string;
+  sentence: string;
+  sentenceMeaning: string;
+  tapCount: number;
+  isCorrect: boolean;
+}
+
 export interface QuestionHistory {
   word: WordItem;
   chosenMeaning: string;
   isCorrect: boolean;
   lane: LaneIndex;
+  tapCount: number;
+  sentence: string;
 }
 
 export type GameScreenType = 'start' | 'playing' | 'result';
@@ -42,6 +53,7 @@ export interface GameSettings {
 }
 
 export interface GameRecord {
+  submission_id?: string;
   timestamp: string;
   name: string;
   play_count: number;
@@ -49,6 +61,12 @@ export interface GameRecord {
   wrong_count: number;
   difficulty?: DifficultyLevel;
   score?: number;
+  avg_taps?: number;
+  average_taps?: number;
+  total_taps?: number;
+  sentence_tap_frequencies?: string;
+  sentence_stats?: SentenceTapStat[];
 }
 
 export type SheetSyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+

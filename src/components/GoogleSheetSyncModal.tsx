@@ -89,19 +89,27 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
     
     // Also test a dummy test record
     const playCount = getStoredPlayCount() || 1;
-    const testPost = await sendGameRecordToGoogleSheet(sheetUrl, {
-      timestamp: formatKoreanTimestamp(),
-      name: `${studentName.trim() || '6학년 테스트'} (테스트)`,
-      play_count: playCount,
-      correct_count: 30,
-      wrong_count: 0,
-    });
+    const testPost = await sendGameRecordToGoogleSheet(
+      sheetUrl,
+      {
+        timestamp: formatKoreanTimestamp(),
+        name: `${studentName.trim() || '6학년 테스트'} (테스트)`,
+        play_count: playCount,
+        correct_count: 30,
+        wrong_count: 0,
+        avg_taps: 2.3,
+        average_taps: 2.3,
+        total_taps: 69,
+        sentence_tap_frequencies: '[1번] "We go to school together." -> 탭: 2회 (정답)\n[2번] "I like red apples." -> 탭: 3회 (정답)',
+      },
+      { force: true }
+    );
 
     if (testPost.success || testGet.success) {
       setTestStatus({
         loading: false,
         success: true,
-        message: '연결 성공! 구글 시트에 테스트 행(timestamp, name, play_count, correct_count, wrong_count)이 기록되었습니다.',
+        message: '연결 성공! 구글 시트에 테스트 행(timestamp, name, play_count, correct_count, wrong_count, avg_taps, sentence_tap_frequencies)이 기록되었습니다.',
       });
       saveStoredSheetUrl(sheetUrl);
       saveStoredStudentName(studentName);
@@ -125,13 +133,13 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                구글 시트 연동 & 앱스 스크립트
-                <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-medium">
-                  초등 6학년 학습 기록
+                구글 시트 연동 설정
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+                  선생님/관리자 1회 설정
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                게임 횟수, 맞힌 개수, 틀린 개수를 구글 시트에 자동 기록합니다
+                학생(플레이어)은 링크를 몰라도 되며, 이름만 입력하면 자동 기록됩니다
               </p>
             </div>
           </div>
@@ -148,35 +156,50 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
         <div className="p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1 text-sm">
           {/* Target Columns Summary Banner */}
           <div className="bg-cyan-950/40 border border-cyan-500/30 rounded-2xl p-3.5 space-y-2">
-            <div className="flex items-center gap-2 text-cyan-300 font-bold text-xs">
-              <Sparkles className="w-4 h-4" />
-              <span>구글 시트 자동 저장 열(Columns) 안내</span>
+            <div className="flex items-center justify-between text-cyan-300 font-bold text-xs">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                구글 시트 자동 저장 7개 열(Columns) 안내
+              </span>
+              <span className="text-[10px] text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30">
+                .env.local 연동 완료
+              </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 text-center text-xs">
               <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-mono">1열</span>
-                <span className="font-bold text-cyan-300">timestamp</span>
+                <span className="font-bold text-cyan-300 text-[11px]">timestamp</span>
                 <span className="text-[9px] text-slate-400 block">완료 일시</span>
               </div>
               <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-mono">2열</span>
-                <span className="font-bold text-amber-300">name</span>
+                <span className="font-bold text-amber-300 text-[11px]">name</span>
                 <span className="text-[9px] text-slate-400 block">학생 이름</span>
               </div>
               <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-mono">3열</span>
-                <span className="font-bold text-sky-300">play_count</span>
+                <span className="font-bold text-sky-300 text-[11px]">play_count</span>
                 <span className="text-[9px] text-slate-400 block">플레이 횟수</span>
               </div>
               <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-mono">4열</span>
-                <span className="font-bold text-emerald-400">correct_count</span>
+                <span className="font-bold text-emerald-400 text-[11px]">correct_count</span>
                 <span className="text-[9px] text-slate-400 block">정답 개수</span>
               </div>
-              <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800 col-span-2 sm:col-span-1">
+              <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-mono">5열</span>
-                <span className="font-bold text-rose-400">wrong_count</span>
+                <span className="font-bold text-rose-400 text-[11px]">wrong_count</span>
                 <span className="text-[9px] text-slate-400 block">오답 개수</span>
+              </div>
+              <div className="bg-cyan-950/80 p-1.5 rounded-lg border border-cyan-500/40">
+                <span className="text-[10px] text-cyan-400 block font-mono">6열</span>
+                <span className="font-bold text-cyan-300 text-[11px]">avg_taps</span>
+                <span className="text-[9px] text-cyan-200 block">평균 탭수</span>
+              </div>
+              <div className="bg-indigo-950/80 p-1.5 rounded-lg border border-indigo-500/40 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-indigo-400 block font-mono">7열</span>
+                <span className="font-bold text-indigo-300 text-[11px]">sentence_taps</span>
+                <span className="text-[9px] text-indigo-200 block">문장별 탭빈도</span>
               </div>
             </div>
           </div>
@@ -209,15 +232,26 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
             </div>
           </div>
 
+          {/* Teacher Info Note */}
+          <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3 text-xs space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-amber-300">
+              <span>💡 Q. 학생(사용자)도 이 링크를 알아야 하나요?</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed text-[11px]">
+              <strong className="text-white">아닙니다! 학생은 링크가 전혀 필요 없습니다.</strong><br />
+              선생님께서 구글 시트에서 배포한 웹 앱 URL을 여기에 <strong>한 번만 입력</strong>해두시면, 학생들은 평소처럼 게임 주소로 들어와서 이름만 입력하고 플레이하면 모든 결과가 선생님 구글 시트로 자동 전송됩니다.
+            </p>
+          </div>
+
           {/* Web App URL Input */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                 <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-                <span>구글 앱스 스크립트 웹 앱 URL</span>
+                <span>선생님의 구글 앱스 스크립트 웹 앱 URL</span>
               </label>
-              <span className="text-[11px] text-slate-400">
-                배포된 URL 입력
+              <span className="text-[11px] text-amber-400/90 font-medium">
+                (선생님만 1회 등록)
               </span>
             </div>
             <div className="flex gap-2">
